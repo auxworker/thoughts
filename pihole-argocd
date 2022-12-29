@@ -1,0 +1,44 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: helm-chart-pihole
+  namespace: argocd
+spec:
+  project: default
+  source:
+    path: charts/pihole
+    repoURL: https://github.com/MoJo2600/pihole-kubernetes
+    targetRevision: bfc0351af6501b19f84a5f08514bdc0b887f3703 #using version number 2.11.0 kept returning errors but I was able to use git commit hash instead
+
+    helm :
+      values: |
+        dnsmasq:
+          customDnsEntries:
+            - address=/argocd/10.0.0.4
+
+          customCnameEntries:
+            - cname=argocd.infrastructure.router.local,10.0.0.4
+
+        persistentVolumeClaim:
+          enabled: true
+
+        serviceDns:
+          loadBalancerIP: 10.0.0.15
+          annotations:
+            metallb.universe.tf/allow-shared-ip: pihole-svc
+            metallb.universe.tf/address-pool: mypool1
+          type: LoadBalancer
+          externalTrafficPolicy: Local
+
+        serviceWeb:
+          loadBalancerIP: 10.0.0.19
+          annotations:
+            metallb.universe.tf/allow-shared-ip: pihole-svc
+            metallb.universe.tf/address-pool: mypool1
+          type: LoadBalancer
+
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: argocd
+  syncPolicy:
+    automated: {}
